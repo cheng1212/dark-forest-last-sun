@@ -1,0 +1,41 @@
+name: Render Dark Forest film
+
+# 本地机器内存太小（~360–660MB 可用）渲不动 3600 帧全片，改由 GitHub Actions 渲染。
+# 触发方式：Actions 页面 → Render Dark Forest film → Run workflow，
+# 或 push 到 main 分支自动触发。成品在运行记录的 Artifacts 里下载。
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system deps (ffmpeg + Noto CJK fonts for subtitles)
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg fonts-noto-cjk
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Ensure Remotion browser
+        run: npx remotion browser ensure
+
+      - name: Render film (120s, 1920x1080, 30fps)
+        run: npx remotion render src/index.ts DarkForestLastSun out/dark-forest-last-sun.mp4 --concurrency=2
+
+      - name: Upload film artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dark-forest-film
+          path: out/dark-forest-last-sun.mp4
+          if-no-files-found: error
